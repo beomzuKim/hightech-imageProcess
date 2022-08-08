@@ -2,6 +2,7 @@
 # 2022.08.02 
 # 2022.08.04 hard coding (detect maximal value, minimal value)
 # 2022.08.05 calculate contrast
+# 2022.08.08 data type, size, reshape etc..
 
 import numpy as np
 import cv2 as cv
@@ -9,13 +10,23 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.signal import find_peaks
 
-
-# plt.close("all")
 ####################### parameter 
+# 1 : Bottom GL
+# 2 : contrast 
+# 3 : difference
+output = 3 # <<<<<<<< ここの値を修正して、検出値を変えることができる。
+blurCount = 1
+analysisCount = 35 
 limit = 150
 blurLevel = 3
+point_no =  25
+chip_no = 65 # <<<<<<<<<< 레이어가 바뀌면 여기 조정
+num = point_no * chip_no 
 
-
+for i in range (0, 10):
+    matrix_contrast =  np.zeros((num,8))
+    matrix_difference = np.zeros((num,8))
+    matrix_BCD = np.zeros((num,8))
 ####################### parameter 
 
 
@@ -23,31 +34,20 @@ blurLevel = 3
 def readImage(fileName):
     global ImageArray
     global height, width
-
-    # int2str fileName and numbering
-    if fileName < 10:
-        fileNo = "00000000" + str(fileName)
-    elif fileName < 100:
-        fileNo = "0000000" + str(fileName)
-    elif fileName < 1000:
-        fileNo = "000000" + str(fileName)
-    else:
-        fileNo = "00000" + str(fileName)
-
+    
+    fileNo = '{0:09}'.format(fileName)
+    
     # open image
     filePath = "C:/Users/kim-beomzu/Desktop/python_test/" + fileNo + "/"+ fileNo + "HDU001.tif"
     ImageArray = cv.imread(filePath, cv.IMREAD_GRAYSCALE)
 
-    # define parameter
-    height, width  = ImageArray.shape
-
 
 # 2. smoothing
-def smoothingImage(blurCount):
+def smoothingImage():
     global ImageArray_smoothing
-    ImageArray_smoothing = cv.blur(ImageArray, (blurLevel,blurLevel))
+    ImageArray_smoothing = cv.blur(ImageArray, (blurLevel, blurLevel))
     for i in range(0,blurCount):
-        ImageArray_smoothing = cv.blur(ImageArray_smoothing, (blurLevel,blurLevel))
+        ImageArray_smoothing = cv.blur(ImageArray_smoothing, (blurLevel, blurLevel))
 
 
 # 3. average distribution
@@ -63,7 +63,6 @@ def average():
         sum_smoothing = sum(ImageArray_smoothing[:,i]) / len(ImageArray_smoothing)
         result_smoothing.append(sum_smoothing)
     
-
 
 # 4. detect each peak
 def peak():
@@ -86,7 +85,6 @@ def peak():
 
 # 5. cutData between each data and remove data
 def cutData():
-    limitGL = limit
     global maxMin_cut
     count = 0
     maxMin_cut = maxMin[:]
@@ -101,21 +99,19 @@ def cutData():
     while result_smoothing[maxMin[count]] < limit:
         maxMin_cut.remove(maxMin[count])
         count -= 1
-    #print(maxMin_cut)
 
-
+# 6. define value of each contrast
 def defineValue():
     global A,B,C
     global A_array, B_array, C_array
     global contrast, difference
-    global contrast_array, difference_array
+    global contrast_array, difference_array, BGL_array
 
     # devide 1,0
     check = [0] * len(maxMin_cut)
     for i in range(0, len(maxMin_cut)):
         if result_smoothing[maxMin_cut[i]] > 150:
             check[i] = 1         
-    #print(check)
 
     # count zeros
     count = 0
@@ -128,8 +124,6 @@ def defineValue():
             count = 0
             #print("1 검출, count값:", count)
         countZeros[i] = count
-    #print(countZeros)
-    
     
     # detect data A, B, C, contrast, difference
     A_array = [0] * len(countZeros)
@@ -153,13 +147,24 @@ def defineValue():
             C_array[i] = C
             contrast_array[i] = contrast
             difference_array[i] = difference
-
+    
     # remove 0
     A_array = [i for i in A_array if i != 0]
     B_array = [i for i in B_array if i != 0]
     C_array = [i for i in C_array if i != 0]
     contrast_array = [i for i in contrast_array if i != 0]
     difference_array = [i for i in difference_array if i != 0]
+    BGL_array = [i for i in B_array if i != 0]
+
+    # show result 
+    if output == 1:
+        print(A_array)
+    elif output == 2:
+        print(contrast_array)
+    elif output == 3:
+        print(difference_array)
+    else:
+        print("error :: press Shift + f5")
 
     # resize array
     while len(contrast_array) < 8:
@@ -167,34 +172,24 @@ def defineValue():
     
     while len(difference_array) < 8:
         difference_array.append(0)
-    
-    print("contrast:", contrast_array)
-    print("difference:", difference_array)
-    
 
+    while len(BGL_array) < 8:
+        BGL_array.append(0)
+    
+# 7. matrix result
 def matrix_result():
-    global matrix_contrast
-    global matrix_difference
-    #matrix_contrast = np.array([[0]*8 for i in range(1,5)])
-    #matrix_difference = np.array([[0]*8 for i in range(1,5)])
-    #matrix_contrast = np.vstack([matrix_contrast, contrast_array])
-    #matrix_difference = np.vstack([matrix_difference, difference_array])
-    #print(matrix_contrast)
-    #print(contrast_array)
-    #print(difference_array)
-        
-
-    #print("contrast:", contrast_array)
-    
+    matrix_contrast[j-1,:] = contrast_array
+    matrix_difference[j-1,:] = difference_array
+    matrix_BCD[j-1,:] = BGL_array
 
 # data table 
-def matrix_menu():
+def table_data():
+    global matrix_A, matrix_B, matrix_C
     menu = ["no.", "wafer_x", "wafer_y", "point", \
-        "value1", "value2", "value3", "value4", "value5", "value6", "value7", "value8"]
-    matrix = [[0]*11 for i in range(1,1625)]
+            "value1", "value2", "value3", "value4", "value5", "value6", "value7", "value8"]
     
     # no
-    no = np.arange(1,1625 + 1).reshape(1625, 1)
+    no = np.arange(1,num + 1).reshape(num, 1)
     
     # wafer_x
     wafer_x = [ "-5",\
@@ -207,9 +202,9 @@ def matrix_menu():
                 "2","2","2","2","2","2","2",\
                 "3","3","3","3","3","3","3",\
                 "4","4","4","4","4",\
-                "5"]
+                "5"] #<<<<<<<<<< 레이어가 바뀌면 여기 조정
     wafer_x = np.repeat(wafer_x, 25)
-    wafer_x = wafer_x.reshape(1625,1)
+    wafer_x = wafer_x.reshape(num,1)
 
     # wafer_y            
     wafer_y = [ "0",\
@@ -222,49 +217,46 @@ def matrix_menu():
                 "-3","-2","-1","0","1","2","3",\
                 "-3","-2","-1","0","1","2","3",\
                 "-2","-1","0","1","2",\
-                "0"]
+                "0"] #<<<<<<<<<< 레이어가 바뀌면 여기 조정
+
     wafer_y = np.repeat(wafer_y, 25)
-    wafer_y = wafer_y.reshape(1625,1)
+    wafer_y = wafer_y.reshape(num,1)
 
     # point
-    point = np.array(range(1,26)).tolist() * int(1625/25)
+    point = np.array(range(1,26)).tolist() * int(num/25)
     point = np.array(point)
-    point = point.reshape(1625,1)
+    point = point.reshape(num,1)
 
+    # matrix (A = BottomContrast, B = contrast, C = contrast)
+    table_data = np.hstack([no, wafer_x, wafer_y, point])
+    matrix_A = np.hstack([table_data, matrix_BCD])
+    matrix_A = np.vstack([menu, matrix_A])
+    matrix_B = np.hstack([table_data, matrix_contrast])
+    matrix_B = np.vstack([menu, matrix_B])
+    matrix_C = np.hstack([table_data, matrix_difference])
+    matrix_C = np.vstack([menu, matrix_C])
     
-    #print(point)
-    matrix = np.hstack([no, wafer_x, wafer_y, point])
-    #print(matrix)
-
-
 
 # appendix.change dataframe of ImageArray and save file
 def array2csv():
-    matrix_difference.tolist
-    df = pd.DataFrame(matrix_difference)
-    df.to_csv('sample1.csv', index = False)
+    if output == 1:
+        #matrix_A.tolist
+        df = pd.DataFrame(matrix_A)
+        df.to_csv('B_value.csv', index = False)
+    elif output == 2:
+        #matrix_B.tolist
+        df = pd.DataFrame(matrix_B)
+        df.to_csv('contrast.csv', index = False)
+    elif output == 3:
+        #matrix_C.tolist
+        df = pd.DataFrame(matrix_C)
+        df.to_csv('difference.csv', index = False)
+    else:
+        print("error :: press Shift + f5")
 
 
-# main
-if __name__ == "__main__":
-    for j in range(1, 20):
-        readImage(j)
-        smoothingImage(1)
-        average() # << 
-        peak()    # <<
-        cutData()
-        defineValue()
-        matrix_result()
 
-
-    #array2csv()
-    matrix_menu()
-
-
-  
-
-
-"""
+def graph():
     plt.figure(1)
     plt.imshow(ImageArray_smoothing, cmap='gray')
     for i in range(0, len(peakMaximum)):
@@ -273,10 +265,8 @@ if __name__ == "__main__":
         plt.axvline(peakMinimum[i], color = 'orange')
     plt.plot(result_smoothing, color = "yellow", marker = '')
     plt.show()
-"""
 
 
-"""
     plt.figure(2)
     plt.imshow(ImageArray, cmap='gray')
     for i in range(0, len(peakMaximum)):
@@ -284,7 +274,20 @@ if __name__ == "__main__":
     for i in range(0, len(peakMinimum)):
         plt.axvline(peakMinimum[i], color = 'orange')
     plt.plot(result_original, color = "yellow", marker = '')
-""" 
 
 
+
+# main
+if __name__ == "__main__":
+    for j in range(1, analysisCount + 1):
+        readImage(j)
+        smoothingImage()
+        average()
+        peak()
+        cutData()
+        defineValue()
+        matrix_result()
+    table_data()
+    # graph()
+    array2csv()
 
