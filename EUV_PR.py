@@ -1,7 +1,6 @@
 # 2022.08.22 EUV PR -> make new image for testing
-# 2022.08.23 
+# 2022.08.23
 
-from multiprocessing.dummy import Array
 import numpy as np
 import cv2 as cv
 import matplotlib.pyplot as plt
@@ -13,6 +12,37 @@ cropSize: int = 150
 GL_limit = 60
 imageNo = 10
 result = []
+
+# wafer_x
+wafer_x = [ "-5",\
+                "-4","-4","-4","-4","-4",\
+                "-3","-3","-3","-3","-3","-3","-3",\
+                "-2","-2","-2","-2","-2","-2","-2",\
+                "-1","-1","-1","-1","-1","-1","-1","-1",\
+                "0","0","0","0","0","0","0","0","0",\
+                "1","1","1","1","1","1","1","1",\
+                "2","2","2","2","2","2","2",\
+                "3","3","3","3","3","3","3",\
+                "4","4","4","4","4",\
+                "5"] #<<<<<<<<<< 레이어가 바뀌면 여기 조정
+wafer_x = np.repeat(wafer_x, 25)
+wafer_x = wafer_x.reshape(1625,1)
+
+# wafer_y            
+wafer_y = [ "0",\
+            "-2","-1","0","1","2",\
+            "-3","-2","-1","0","1","2","3",\
+            "-3","-2","-1","0","1","2","3",\
+            "-4","-3","-2","-1","0","1","2","3",\
+            "-4","-3","-2","-1","0","1","2","3","4",\
+            "-4","-3","-2","-1","0","1","2","3",\
+            "-3","-2","-1","0","1","2","3",\
+            "-3","-2","-1","0","1","2","3",\
+            "-2","-1","0","1","2",\
+            "0"] #<<<<<<<<<< 레이어가 바뀌면 여기 조정
+
+wafer_y = np.repeat(wafer_y, 25)
+wafer_y = wafer_y.reshape(1625,1)
 
 
 # partial_sum
@@ -29,6 +59,8 @@ def partial_sum(arr, a, b):
         return partial_sum[b]
     else: 
         return partial_sum[b] - partial_sum[a-1]
+
+
     
 
 # main
@@ -62,11 +94,11 @@ if __name__ == "__main__":
 
         rect = patches.Rectangle(
             (cropSize, cropSize),
-        width-cropSize-1,
-        height-cropSize-1,
-        linewidth=2,
-        edgecolor='r',
-        facecolor='none')
+        width - cropSize -1,
+        height - cropSize - 1,
+        linewidth = 2,
+        edgecolor = 'r',
+        facecolor = 'none')
         ax.add_patch(rect)
         # plt.show()
         plt.savefig("C:/Users/kim-beomzu/Desktop/python_test/EUV_PR_histogram/area/" + fileNo + "_1.png") # << file name 바꿔주면 완료
@@ -91,12 +123,4 @@ if __name__ == "__main__":
 
 
     print("Done!!")
-    print("Done!!")
-    print("Done!!")
-    print("Done!!")
-    
-    
-
-    
-
 
